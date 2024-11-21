@@ -1,0 +1,117 @@
+// Representación inicial del tablero
+let tablero = [
+  [1, 2, 3],
+  [4, 5, 6],
+  [7, 8, 0] // 0 representa el espacio vacío
+];
+
+const tableroDiv = document.getElementById("tablero");
+const resultadoDiv = document.getElementById("resultado");
+
+// Función para renderizar el tablero en la página
+function renderizarTablero(tablero) {
+  tableroDiv.innerHTML = "";
+  tablero.flat().forEach((celda, index) => {
+    const div = document.createElement("div");
+    div.textContent = celda !== 0 ? celda : "";
+    div.className = celda === 0 ? "empty" : "";
+    tableroDiv.appendChild(div);
+  });
+}
+
+// Heurística: Distancia de Manhattan
+function heuristica(tablero) {
+  let distancia = 0;
+  const objetivo = [[1, 2, 3], [4, 5, 6], [7, 8, 0]];
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      const valor = tablero[i][j];
+      if (valor !== 0) {
+        const [x, y] = encontrarPosicion(objetivo, valor);
+        distancia += Math.abs(i - x) + Math.abs(j - y);
+      }
+    }
+  }
+  return distancia;
+}
+
+// Encuentra la posición de un número en la matriz
+function encontrarPosicion(tablero, valor) {
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      if (tablero[i][j] === valor) return [i, j];
+    }
+  }
+  return null;
+}
+
+// Implementación de A*
+function resolverJuego(tablero) {
+  const abiertos = [{ tablero, movimientos: [], costo: 0 }];
+  const cerrados = new Set();
+
+  while (abiertos.length > 0) {
+    // Ordenar por costo + heurística
+    abiertos.sort((a, b) => (a.costo + heuristica(a.tablero)) - (b.costo + heuristica(b.tablero)));
+    const actual = abiertos.shift();
+
+    if (esEstadoObjetivo(actual.tablero)) {
+      return actual.movimientos;
+    }
+
+    cerrados.add(JSON.stringify(actual.tablero));
+
+    // Generar vecinos
+    for (const [nuevoTablero, movimiento] of generarMovimientos(actual.tablero)) {
+      if (!cerrados.has(JSON.stringify(nuevoTablero))) {
+        abiertos.push({ 
+          tablero: nuevoTablero, 
+          movimientos: [...actual.movimientos, movimiento], 
+          costo: actual.movimientos.length + 1 
+        });
+      }
+    }
+  }
+  return null;
+}
+
+// Verificar si el estado actual es el objetivo
+function esEstadoObjetivo(tablero) {
+  const objetivo = [[1, 2, 3], [4, 5, 6], [7, 8, 0]];
+  return JSON.stringify(tablero) === JSON.stringify(objetivo);
+}
+
+// Generar movimientos válidos
+function generarMovimientos(tablero) {
+  const movimientos = [];
+  const [x, y] = encontrarPosicion(tablero, 0);
+
+  const direcciones = [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1]
+  ];
+
+  for (const [nx, ny] of direcciones) {
+    if (nx >= 0 && nx < 3 && ny >= 0 && ny < 3) {
+      const nuevoTablero = tablero.map(fila => [...fila]);
+      [nuevoTablero[x][y], nuevoTablero[nx][ny]] = [nuevoTablero[nx][ny], nuevoTablero[x][y]];
+      movimientos.push([nuevoTablero, `${x},${y} -> ${nx},${ny}`]);
+    }
+  }
+  return movimientos;
+}
+
+// Acción del botón Resolver
+document.getElementById("resolver").addEventListener("click", () => {
+  const movimientos = resolverJuego(tablero);
+  if (movimientos) {
+    resultadoDiv.textContent = `Resuelto en ${movimientos.length} movimientos: ${movimientos.join(", ")}`;
+  } else {
+    resultadoDiv.textContent = "No se pudo resolver.";
+  }
+});
+
+// Inicializar la página
+renderizarTablero(tablero);
